@@ -1,8 +1,6 @@
 services:
   ollama-proxy:
-    build:
-      context: ../ollama-proxy
-      dockerfile: Dockerfile
+    image: sebchevre/ollama-proxy:latest
     container_name: ollama-proxy
     ports:
       - "11435:11435"
@@ -26,9 +24,7 @@ services:
       retries: 5
 
   ollama-monitoring:
-    build:
-      context: ../ollama-monitoring
-      dockerfile: Dockerfile
+    image: sebchevre/ollama-monitoring:latest
     container_name: ollama-monitoring
     ports:
       - "3333:3333"

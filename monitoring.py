@@ -671,6 +671,16 @@ DASHBOARD_HTML = """
                 <div class="stat-label">Models Used</div>
                 <div class="stat-value" id="modelsCount">-</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-label">Avg Execution Time</div>
+                <div class="stat-value" id="avgDuration">-</div>
+                <div style="font-size: 12px; color: var(--text-light); margin-top: 4px;">ms</div>
+            </div>
+            <div class="stat-card secondary">
+                <div class="stat-label">Total Time</div>
+                <div class="stat-value" id="totalDuration">-</div>
+                <div style="font-size: 12px; color: var(--text-light); margin-top: 4px;">seconds</div>
+            </div>
         </div>
 
         <div class="grid-2">
@@ -725,6 +735,10 @@ DASHBOARD_HTML = """
                 document.getElementById('totalOutput').textContent = (data.totalOutputTokens || 0).toLocaleString();
                 document.getElementById('totalRequests').textContent = (data.sessions?.length || 0).toLocaleString();
                 document.getElementById('modelsCount').textContent = Object.keys(data.models || {}).length;
+                
+                // Update execution time stats
+                document.getElementById('avgDuration').textContent = (data.avgDuration || 0).toLocaleString();
+                document.getElementById('totalDuration').textContent = ((data.totalDuration || 0) / 1000).toFixed(1);
 
                 const lastUpdated = data.lastUpdated ? new Date(data.lastUpdated).toLocaleString() : '-';
                 document.getElementById('updatedAt').textContent = lastUpdated;
@@ -817,6 +831,7 @@ DASHBOARD_HTML = """
                     <td>${stats.count}</td>
                     <td>${stats.inputTokens.toLocaleString()}</td>
                     <td>${stats.outputTokens.toLocaleString()}</td>
+                    <td><strong>${(stats.avgDuration || 0).toLocaleString()}ms</strong></td>
                 </tr>
             `).join('');
 
@@ -828,6 +843,7 @@ DASHBOARD_HTML = """
                             <th>Requests</th>
                             <th>Input Tokens</th>
                             <th>Output Tokens</th>
+                            <th>Avg Duration</th>
                         </tr>
                     </thead>
                     <tbody>${rows}</tbody>
@@ -848,6 +864,7 @@ DASHBOARD_HTML = """
                     <td><span class="model-name">${session.model}</span></td>
                     <td>${session.inputTokens.toLocaleString()}</td>
                     <td>${session.outputTokens.toLocaleString()}</td>
+                    <td><strong>${(session.duration || 0).toLocaleString()}ms</strong></td>
                     <td>${new Date(session.timestamp).toLocaleTimeString()}</td>
                 </tr>
             `).join('');
@@ -859,6 +876,7 @@ DASHBOARD_HTML = """
                             <th>Model</th>
                             <th>Input</th>
                             <th>Output</th>
+                            <th>Duration</th>
                             <th>Time</th>
                         </tr>
                     </thead>
