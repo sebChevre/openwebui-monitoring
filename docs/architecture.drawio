@@ -1,0 +1,67 @@
+<mxfile host="65bd71144e">
+    <diagram id="architecture" name="OLLAMA Architecture">
+        <mxGraphModel dx="804" dy="784" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" background="#ffffff" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="title" value="OLLAMA Token Tracking Architecture" style="text;html=1;fontSize=24;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="20" width="600" height="40" as="geometry"/>
+                </mxCell>
+                <mxCell id="webui" value="Open WebUI&#xa;(Port 8080)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1F5FE;strokeColor=#01579B;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="25" y="90" width="150" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="client" value="Client Code/Browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F3E5F5;strokeColor=#4A148C;strokeWidth=2;fontSize=12;fontStyle=1;" parent="1" vertex="1">
+                    <mxGeometry x="500" y="100" width="150" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="proxy" value="OLLAMA PROXY&#xa;(Port 11435)&#xa;&#xa;Intercepts requests&#xa;Captures tokens&#xa;Forwards to monitoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF3E0;strokeColor=#E65100;strokeWidth=2;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="250" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="monitoring" value="OLLAMA MONITORING&#xa;(Port 3333)&#xa;&#xa;Receives tokens&#xa;Aggregates stats&#xa;Persists data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F5E9;strokeColor=#1B5E20;strokeWidth=2;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="250" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="ollama" value="OLLAMA Server&#xa;(Port 11434)&#xa;&#xa;LLM Inference&#xa;Generates responses&#xa;Returns tokens info" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCE4EC;strokeColor=#880E4F;strokeWidth=2;fontSize=11;" parent="1" vertex="1">
+                    <mxGeometry x="100" y="450" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="storage" value="Storage&#xa;token-stats.json&#xa;&#xa;Total tokens I/O&#xa;Sessions history&#xa;Per-model stats" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ECEFF1;strokeColor=#263238;strokeWidth=2;fontSize=10;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="450" width="200" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0277BD;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="webui" target="proxy" edge="1" label="Request">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0277BD;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="client" target="proxy" edge="1" label="Request">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#D32F2F;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="proxy" target="ollama" edge="1" label="Forward request">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#F57C00;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="ollama" target="proxy" edge="1" label="Response + tokens">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#0277BD;strokeWidth=2;dashed=1;startArrow=none;endArrow=classic;" parent="1" source="proxy" target="webui" edge="1" label="Stream response">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#388E3C;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="proxy" target="monitoring" edge="1" label="POST /api/record">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="arrow7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#558B2F;strokeWidth=2;startArrow=none;endArrow=classic;" parent="1" source="monitoring" target="storage" edge="1" label="Write">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend_title" value="Flow Legend" style="text;html=1;fontSize=12;fontStyle=1;verticalAlign=top;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="620" width="100" height="30" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend1" value="User Request" style="text;html=1;fontSize=10;fontColor=#0277BD;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="650" width="150" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend2" value="Token Sending" style="text;html=1;fontSize=10;fontColor=#388E3C;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="650" width="150" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend3" value="Storage" style="text;html=1;fontSize=10;fontColor=#558B2F;" parent="1" vertex="1">
+                    <mxGeometry x="450" y="650" width="150" height="20" as="geometry"/>
+                </mxCell>
+                <mxCell id="flow_desc" value="Complete Flow: 1. Client sends request to Proxy  2. Proxy forwards to Ollama  3. Ollama processes and responds  4. Proxy captures tokens from response  5. Proxy streams response back to client  6. Proxy sends tokens to Monitoring  7. Monitoring persists to JSON" style="text;html=1;fontSize=9;align=left;verticalAlign=top;rounded=1;fillColor=#F5F5F5;strokeColor=#999999;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="700" width="700" height="70" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

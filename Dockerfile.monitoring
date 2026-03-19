@@ -1,0 +1,13 @@
+FROM ghcr.io/open-webui/open-webui:latest
+
+# Copier le fichier monitoring.py vers le bon endroit
+COPY monitoring.py /app/backend/open_webui/routers/monitoring.py
+
+# Copier le script de patch
+COPY patch.py /tmp/patch.py
+
+# Appliquer les patches
+RUN python3 /tmp/patch.py && rm /tmp/patch.py
+
+# Exposer le port
+EXPOSE 8080
