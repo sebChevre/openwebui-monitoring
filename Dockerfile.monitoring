@@ -12,7 +12,8 @@ COPY Sidebar.svelte /build/src/lib/components/layout/Sidebar.svelte
 
 # Installer les dépendances et compiler
 # --legacy-peer-deps pour résoudre les conflits de dépendances tiptap
-RUN npm ci --legacy-peer-deps --force && npm run build
+# NODE_OPTIONS pour augmenter la heap (Docker Hub a peu de RAM)
+RUN npm ci --legacy-peer-deps --force && NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # Runtime image
 FROM ghcr.io/open-webui/open-webui:0.8.10
