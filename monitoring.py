@@ -151,23 +151,30 @@ SIDEBAR_INJECT_JS = """
         
         // Try multiple strategies to find the menu
         let menuContainer = null;
+        let insertPoint = null;
         
-        // Strategy 1: Look for the main layout
+        // Strategy 1: Look for the main navigation structure
         const layouts = document.querySelectorAll('[class*="flex"]');
         for (let layout of layouts) {
-            if (layout.textContent && layout.textContent.includes('Models') && layout.textContent.includes('Settings')) {
+            if (layout.textContent && 
+                (layout.textContent.includes('Models') || layout.textContent.includes('Settings') || layout.textContent.includes('Paramètres'))) {
                 menuContainer = layout;
                 break;
             }
         }
         
-        // Strategy 2: Look for a nav element
+        // Strategy 2: Look for a nav element or sidebar
         if (!menuContainer) {
-            const navs = document.querySelectorAll('nav');
-            if (navs.length > 0) menuContainer = navs[0];
+            const navs = document.querySelectorAll('nav, aside, [role="navigation"]');
+            for (let nav of navs) {
+                if (nav && nav.offsetHeight > 0) {
+                    menuContainer = nav;
+                    break;
+                }
+            }
         }
         
-        // Strategy 3: Look for any element with sidebar-like structure
+        // Strategy 3: Look for specific OpenWebUI patterns
         if (!menuContainer) {
             const sidebar = document.querySelector('[class*="sidebar"]') || 
                            document.querySelector('aside') ||
@@ -175,53 +182,76 @@ SIDEBAR_INJECT_JS = """
             if (sidebar) menuContainer = sidebar;
         }
         
-        if (!menuContainer) return false;
+        // Strategy 4: Look for any element with visible menu items
+        if (!menuContainer) {
+            const allDivs = document.querySelectorAll('div, ul');
+            for (let div of allDivs) {
+                const text = div.textContent;
+                if (text && (text.includes('Models') || text.includes('Settings')) && div.querySelectorAll('a, button').length > 2) {
+                    menuContainer = div;
+                    break;
+                }
+            }
+        }
+        
+        if (!menuContainer) {
+            console.debug('[Monitoring] Menu container not found');
+            return false;
+        }
         
         // Find where to inject - look for existing menu items
-        let insertPoint = null;
         
-        // Strategy 1: Find the "Settings" link and insert before/after
-        const existingLinks = menuContainer.querySelectorAll('a, button');
-        for (let link of existingLinks) {
-            if (link.textContent.includes('Settings') || link.textContent.includes('Paramètres')) {
-                insertPoint = link.parentElement || link;
-                break;
-            }
+        // Strategy 1: Find the last menu section
+        const menuItems = menuContainer.querySelectorAll('a[href], button, [role="menuitem"]');
+        if (menuItems.length > 0) {
+            insertPoint = menuItems[menuItems.length - 1];
         }
         
-        // Strategy 2: Just insert at the end of the first menu section
+        // Strategy 2: Find Settings/Paramètres link
         if (!insertPoint) {
-            const menuItems = menuContainer.querySelectorAll('[class*="flex"][class*="gap"], li, div[role="menuitem"]');
-            if (menuItems.length > 0) {
-                insertPoint = menuItems[menuItems.length - 1];
+            for (let link of menuItems) {
+                if (link.textContent.includes('Settings') || link.textContent.includes('Paramètres')) {
+                    insertPoint = link.parentElement || link;
+                    break;
+                }
             }
         }
         
-        if (!insertPoint) insertPoint = menuContainer;
+        // Strategy 3: Find first visible menu parent
+        if (!insertPoint) {
+            const candidates = menuContainer.querySelectorAll('[class*="flex"][class*="flex-col"], ul > li');
+            if (candidates.length > 0) {
+                insertPoint = candidates[candidates.length - 1];
+            }
+        }
         
-        // Create the monitoring link using a button instead of <a> for better control
+        if (!insertPoint) {
+            insertPoint = menuContainer;
+        }
+        
+        // Create the monitoring link
         const linkContainer = document.createElement('div');
         linkContainer.id = 'monitoring-link-injected';
-        linkContainer.className = 'flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100/50 dark:hover:bg-gray-850/50 transition w-full cursor-pointer';
-        linkContainer.style.cssText = 'cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: 8px; border: none; background: transparent; transition: background-color 0.2s;';
+        linkContainer.style.cssText = 'cursor: pointer; display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border-radius: 8px; border: none; background: transparent; transition: background-color 0.2s; margin-top: 4px;';
+        linkContainer.title = 'Token Monitoring Dashboard';
         linkContainer.innerHTML = `
-            <svg class="w-5 h-5" style="flex-shrink: 0;" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+            <svg class="w-5 h-5" style="flex-shrink: 0; width: 20px; height: 20px;" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                 <path d="M3 13h2v8H3zm4-8h2v16H7zm4-2h2v18h-2zm4-2h2v20h-2zm4 4h2v16h-2z" fill="currentColor"/>
             </svg>
-            <span style="font-weight: 500; font-size: 16px;">Monitoring</span>
+            <span style="font-weight: 500; font-size: 14px; flex: 1;">Monitoring</span>
         `;
         
         // Add click handler to open dashboard
         linkContainer.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            console.log('[Monitoring] Opening dashboard...');
             window.open('/api/admin/monitoring/dashboard', 'monitoring-dashboard');
         });
         
-        // Also add hover effect
+        // Add hover effect
         linkContainer.addEventListener('mouseenter', () => {
-            linkContainer.style.backgroundColor = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'rgba(107, 114, 128, 0.3)' : 'rgba(0, 0, 0, 0.05)';
+            const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            linkContainer.style.backgroundColor = isDark ? 'rgba(107, 114, 128, 0.3)' : 'rgba(0, 0, 0, 0.05)';
         });
         
         linkContainer.addEventListener('mouseleave', () => {
@@ -230,28 +260,31 @@ SIDEBAR_INJECT_JS = """
         
         // Insert the link
         try {
-            if (insertPoint.parentElement) {
+            // Try to insert next to existing menu item
+            if (insertPoint.parentElement && insertPoint !== menuContainer) {
                 insertPoint.parentElement.insertBefore(linkContainer, insertPoint.nextSibling);
             } else {
+                // Fallback: append to menu container
                 menuContainer.appendChild(linkContainer);
             }
+            console.log('[Monitoring] Link injected successfully');
             return true;
         } catch (e) {
-            console.error('Failed to inject monitoring link:', e);
+            console.error('[Monitoring] Failed to inject link:', e);
             return false;
         }
     }
     
-    // Try injecting multiple times with increasing delays
+    // Try injecting multiple times with exponential backoff
     let attempts = 0;
-    const maxAttempts = 50;
+    const maxAttempts = 100;
     
     function tryInject() {
         attempts++;
         
         // Check if already done
         if (document.getElementById('monitoring-link-injected')) {
-            console.log('[Monitoring] Link successfully injected');
+            console.log('[Monitoring] Link already present');
             return;
         }
         
@@ -263,12 +296,11 @@ SIDEBAR_INJECT_JS = """
         
         // Try to inject
         if (injectLink()) {
-            console.log('[Monitoring] Link injected on attempt', attempts);
             return;
         }
         
         // Schedule next attempt with exponential backoff
-        const delay = Math.min(500 + attempts * 100, 3000);
+        const delay = Math.min(100 + attempts * 50, 2000);
         setTimeout(tryInject, delay);
     }
     
@@ -278,6 +310,15 @@ SIDEBAR_INJECT_JS = """
     } else {
         tryInject();
     }
+    
+    // Also try again on route changes (for SPA navigation)
+    const observer = new MutationObserver(() => {
+        if (!document.getElementById('monitoring-link-injected')) {
+            tryInject();
+        }
+    });
+    
+    observer.observe(document.body, { childList: true, subtree: true });
 })();
 """
 

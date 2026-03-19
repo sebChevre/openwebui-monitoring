@@ -1,103 +1,185 @@
-# Quick Reference: Monitoring Integration
+# Quick Reference - OpenWebUI Monitoring
 
-## 📁 Directory Structure
+## ⚙️ Requirements
 
-```
-openwebui-monitoring/
-├── README.md                 # Overview et utilisation
-├── MODIFICATIONS.md          # Changes détaillées ligne par ligne
-├── QUICK_REFERENCE.md        # Ce fichier
-├── patch.py                  # Script de patch automatisé
-├── monitoring.py             # Router FastAPI pour le monitoring
-├── Dockerfile.monitoring     # Docker build avec modifications
-├── dev-docker-compose.yml    # Configuration docker-compose
-├── update.sh                 # Script de mise à jour automatisée
-└── docs/
-    └── architecture.drawio   # Schémas d'architecture
-```
+- Docker Desktop (or Docker Engine)
+- Docker Compose v2+
+- **Node.js 20+** (only for local builds outside Docker)
 
-## 🚀 Commandes Rapides
+## 🚀 Quick Commands
 
-### Mise à jour OpenWebUI (après git pull)
+### Build & Start
 ```bash
 cd /Users/seb/OLLAMA/openwebui-monitoring
-./update.sh
+
+# One-liner: build + start
+./build.sh && docker-compose -f dev-docker-compose.yml up -d
+
+# Or separate:
+./build.sh                                          # Build image
+docker-compose -f dev-docker-compose.yml up -d     # Start all services
 ```
 
-### Rebuild Docker avec modifications
+### Access Services
 ```bash
+# OpenWebUI
+open http://localhost:8080
+
+# Monitoring Dashboard
+open http://localhost:8080/api/admin/monitoring/dashboard
+
+# Check all services running
+docker-compose -f dev-docker-compose.yml ps
+```
+
+### View Logs
+```bash
+# All services
+docker-compose -f dev-docker-compose.yml logs -f
+
+# OpenWebUI only
+docker-compose -f dev-docker-compose.yml logs -f open-webui
+
+# Last 50 lines
+docker logs open-webui | tail -50
+```
+
+### Restart Services
+```bash
+# Restart OpenWebUI only
+docker-compose -f dev-docker-compose.yml restart open-webui
+
+# Restart all services
+docker-compose -f dev-docker-compose.yml restart
+```
+
+### Stop Everything
+```bash
+docker-compose -f dev-docker-compose.yml down -v  # Add -v to clean volumes
+```
+
+## 🔄 Development Workflow
+
+### After Modifying Sidebar.svelte
+```bash
+# 1. Update local copy (if editing in open-webui repo)
+cp ../open-webui/src/lib/components/layout/Sidebar.svelte ./Sidebar.svelte
+
+# 2. Rebuild with build.sh (includes copy + docker build)
+./build.sh
+
+# 3. Restart container
+docker-compose -f dev-docker-compose.yml restart open-webui
+
+# 4. Test in browser (hard refresh!)
+open http://localhost:8080
+```
+
+### After OpenWebUI Source Updates
+```bash
+cd /Users/seb/OLLAMA/open-webui
+git pull origin main
+
 cd /Users/seb/OLLAMA/openwebui-monitoring
-docker build -t open-webui-monitoring -f Dockerfile.monitoring .
-docker compose -f dev-docker-compose.yml down
-docker compose -f dev-docker-compose.yml up -d
+./build.sh  # Auto-copies Sidebar.svelte + rebuilds everything
+docker-compose -f dev-docker-compose.yml restart open-webui
 ```
 
-### Vérifier les logs
+## 📊 Monitoring API
+
+**Base URL:** `http://localhost:8080/api/admin/monitoring/`
+
 ```bash
-docker logs open-webui -f          # Logs en temps réel
-docker logs open-webui | tail -50  # Dernières 50 lignes
+# Get stats
+curl http://localhost:8080/api/admin/monitoring/stats | jq
+
+# Get model stats
+curl http://localhost:8080/api/admin/monitoring/stats/model/llama2 | jq
+
+# Check health
+curl http://localhost:8080/api/admin/monitoring/health | jq
+
+# Reset stats (POST)
+curl -X POST http://localhost:8080/api/admin/monitoring/reset
 ```
 
-### Réinitialiser (si quelque chose casse)
-```bash
-# Option 1: Reconstruire complètement
-./update.sh
-
-# Option 2: Redémarrer seulement
-docker compose -f dev-docker-compose.yml restart open-webui
-```
-
-## 📊 Endpoints Disponibles
-
-Tous les endpoints sont sous `/api/admin/monitoring/`:
-
-| Endpoint | Méthode | Retour |
-|----------|---------|--------|
-| `/health` | GET | `{"status": "healthy"}` |
-| `/stats` | GET | Total requests + par model |
-| `/stats/model/{name}` | GET | Stats pour un model spécifique |
-| `/history` | GET | Historique des requêtes |
-| `/dashboard` | GET | HTML dashboard avec Chart.js |
-| `/inject-sidebar.js` | GET | JavaScript d'injection |
-| `/reset` | POST | Réinitialiser les stats |
-
-## 🔍 Dashboard
-
-Accès direct: http://localhost:8080/api/admin/monitoring/dashboard
-
-Où tu verras:
-- Graphique du nombre de requêtes par model
-- Nombre total de requêtes
-- Modèles utilisés
-- Tokens comptabilisés
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/health` | GET | Service health check |
+| `/stats` | GET | Overall statistics |
+| `/stats/model/{name}` | GET | Model-specific stats |
+| `/history` | GET | Request history |
+| `/dashboard` | GET | HTML dashboard |
+| `/reset` | POST | Reset all statistics |
 
 ## 🔧 Troubleshooting
 
-### "Je ne vois pas le lien Monitoring dans le menu"
-1. Ouvre la console (F12)
-2. Regarde pour des erreurs JavaScript
-3. Vérifie les logs: `docker logs open-webui | grep monitoring`
-4. Rebuild au besoin: `docker build -t open-webui-monitoring -f openwebui-monitoring/Dockerfile.monitoring .`
+| Issue | Solution |
+|-------|----------|
+| Build fails with `EBADENGINE` | Docker uses `node:20-alpine`. Only issue if building outside Docker. |
+| npm dependency conflicts | Expected - build uses `--legacy-peer-deps --force` flags. Safe. |
+| Monitoring link doesn't appear | Hard refresh browser (Cmd+Shift+R on macOS) |
+| Services won't start | Check `docker-compose -f dev-docker-compose.yml ps` - all Up? |
+| Port 8080 already in use | Change port in `dev-docker-compose.yml` or stop conflicting app |
+| Container exited | Check logs: `docker-compose logs open-webui` |
 
-### "Les modifications ont disparu après mise à jour"
-1. Les fichiers sont dans openwebui-monitoring/MODIFICATIONS.md
-2. Rebuild automatiquement avec le Dockerfile
-3. Ou utilise: `./update.sh`
+## 📦 Docker Cache & Performance
 
-### "Dockerfile ne build pas"
-1. Vérifie la version d'OpenWebUI: `grep FROM openwebui-monitoring/Dockerfile.monitoring`
-2. Compare avec la version officielle actuellement running
-3. Ajuste les chemins de fichiers si OpenWebUI structure a changé
+```bash
+# Build from cache (fastest, ~1-2 min)
+./build.sh
 
-## 📝 Maintenance Automatisée
+# Rebuild without cache (longest, ~5-10 min)
+docker-compose -f dev-docker-compose.yml build open-webui --no-cache
 
-Tout est maintenant **automatisé** par le `Dockerfile.monitoring` et `patch.py`:
+# Clear all Docker artifacts
+docker system prune -a
+```
 
-1. **monitoring.py** - Cloné dans le bon dossier
-2. **main.py** - Modifications appliquées automatiquement par `patch.py`
-3. **index.html** - Script injecté automatiquement par `patch.py`
+## 📂 Build Context
 
-Lors d'une mise à jour majeure d'OpenWebUI, il suffira de rebuildler le Dockerfile. Si des erreurs surviennent, consulte MODIFICATIONS.md pour adapter manuellement.
+The Dockerfile.monitoring multi-stage build:
+
+1. **Stage 1 (Builder)**: `node:20-alpine`
+   - Clones OpenWebUI v0.8.10
+   - Copies custom Sidebar.svelte
+   - Runs `npm ci --legacy-peer-deps --force`
+   - Builds with `npm run build`
+
+2. **Stage 2 (Runtime)**: `ghcr.io/open-webui:0.8.10`
+   - Copies compiled bundle from builder
+   - Adds monitoring.py + patch.py
+   - Patches main.py to register monitoring router
+
+## 📁 Key Files
+
+```
+openwebui-monitoring/
+├── Dockerfile.monitoring  # Multi-stage build (Node 20 + compiler + runtime)
+├── build.sh              # Copies Sidebar.svelte + runs docker build
+├── monitoring.py         # FastAPI router (/api/admin/monitoring/*)
+├── patch.py              # Registers monitoring router in main.py
+├── Sidebar.svelte        # Custom sidebar (auto-copied by build.sh)
+├── dev-docker-compose.yml
+└── README.md             # Full documentation
+```
+
+## 💡 Quick Tips
+
+- **First build**: Takes 5-10 minutes (normal - compiling Node.js + web app)
+- **Subsequent builds**: 1-2 minutes thanks to Docker cache
+- **Browser hard refresh**: Cmd+Shift+R (clears local cache)
+- **Docker logs**: Always first troubleshooting step
+- **Volume cleanup**: Use `docker-compose down -v` to reset data
+
+## ✅ Build Process
+
+**What build.sh does:**
+1. Copies Sidebar.svelte from `../open-webui/`
+2. Runs Docker multi-stage build:
+   - Stage 1: Node.js clone OpenWebUI, copy modified Sidebar.svelte, build
+   - Stage 2: Use official image, copy compiled bundle, add monitoring
+3. Final image has: built Open WebUI + monitoring integration + patched main.py
 
 ## 🎯 Cas d'Utilisation Courants
 

@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Script to patch OpenWebUI for monitoring integration
+Patch OpenWebUI to register monitoring router
+
+This script adds the monitoring router to FastAPI's main.py
+The monitoring link is already in the compiled Sidebar.svelte (from multi-stage build)
 """
 import sys
 import re
 
+
 def patch_main_py(filepath):
-    """Add monitoring router registration to main.py"""
+    """Add monitoring router import and registration to main.py"""
     with open(filepath, 'r') as f:
         content = f.read()
     
@@ -32,28 +36,12 @@ def patch_main_py(filepath):
     with open(filepath, 'w') as f:
         f.write(content)
     
-    print(f"✅ Patched {filepath}")
+    print(f"✅ Patched {filepath} - monitoring router registered")
 
-def patch_index_html(filepath):
-    """Add script injection to index.html"""
-    with open(filepath, 'r') as f:
-        content = f.read()
-    
-    if 'inject-sidebar.js' not in content:
-        content = content.replace(
-            '</html>',
-            '<script async src="/api/admin/monitoring/inject-sidebar.js"></script>\n</html>'
-        )
-    
-    with open(filepath, 'w') as f:
-        f.write(content)
-    
-    print(f"✅ Patched {filepath}")
 
 if __name__ == '__main__':
     try:
         patch_main_py('/app/backend/open_webui/main.py')
-        patch_index_html('/app/build/index.html')
         print("\n✅ All patches applied successfully!")
     except Exception as e:
         print(f"❌ Error: {e}")
