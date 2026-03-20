@@ -11,9 +11,6 @@ services:
       OLLAMA_HOST: host.docker.internal
       OLLAMA_PORT: 11434
       MONITOR_URL: http://ollama-monitoring:3333
-      LOG_FILE: /data/proxy-log.json
-    volumes:
-      - proxy-data:/data
     depends_on:
       - ollama-monitoring
     networks:
@@ -34,11 +31,16 @@ services:
       - "3333:3333"
     environment:
       PORT: 3333
-      DATA_DIR: /data
-    volumes:
-      - monitoring-data:/data
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ollama_user
+      DB_PASSWORD: ollama_password
+      DB_NAME: ollama_monitoring
     networks:
       - ollama-network
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3333/health"]
@@ -73,10 +75,28 @@ services:
       timeout: 10s
       retries: 3
 
+  postgres:
+    image: postgres:15-alpine
+    container_name: ollama-postgres
+    environment:
+      POSTGRES_DB: ollama_monitoring
+      POSTGRES_USER: ollama_user
+      POSTGRES_PASSWORD: ollama_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ollama-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "ollama_user", "-d", "ollama_monitoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
-  proxy-data:
-    driver: local
-  monitoring-data:
+  postgres-data:
     driver: local
   webui-data:
     driver: local

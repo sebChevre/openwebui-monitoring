@@ -899,8 +899,10 @@ DASHBOARD_HTML = """
         }
 
         // Load stats on page load and auto-refresh every 10 seconds
-        loadStats();
-        setInterval(loadStats, 10000);
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            setInterval(loadStats, 10000);
+        });
     </script>
 </body>
 </html>
